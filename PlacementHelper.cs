@@ -12,14 +12,11 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using PlacementHelper;
 using Il2CppSystem.IO;
-using Il2CppAssets.Scripts.Unity.UI_New.InGame.RightMenu;
-using Il2CppAssets.Scripts.Unity.UI_New.InGame.StoreMenu;
 using Il2CppAssets.Scripts.Simulation.Objects;
 using Il2CppAssets.Scripts.Models;
 using Il2CppAssets.Scripts.Models.Towers;
 using Il2CppAssets.Scripts.Unity.UI_New.Popups;
 using Il2CppGeom;
-using Il2CppAssets.Scripts.Simulation.Input;
 
 [assembly: MelonInfo(typeof(PlacementHelper.PlacementHelper), ModHelperData.Name, ModHelperData.Version, ModHelperData.RepoOwner)]
 [assembly: MelonGame("Ninja Kiwi", "BloonsTD6")]
@@ -28,6 +25,8 @@ namespace PlacementHelper;
 
 public class PlacementHelper : BloonsTD6Mod
 {
+    private bool isInGame = false;
+    
     private Vector2? savedPosition;
     private string savedTowerId = "";
     private readonly List<Tower> highlightedTowers = new();
@@ -43,10 +42,11 @@ public class PlacementHelper : BloonsTD6Mod
     public override void OnUpdate()
     {
         base.OnUpdate();
-        if (InGame.instance == null) return;
 
-        var inputManager = InGame.instance.inputManager;
-
+        if (!isInGame || InGame.instance?.InputManagers?.FirstOrDefault() == null) return;
+        
+        var inputManager = InGame.instance.InputManagers.First();
+        
         if (!inputManager.inPlacementMode || inputManager.towerModel == null)
         {
             UnHilightTowers(highlightedTowers);
@@ -55,7 +55,7 @@ public class PlacementHelper : BloonsTD6Mod
             ResetSavedValues();
             return;
         }
-
+        
         if (Settings.HighlightSacrifices)
         {
             HandleSacrifices();
@@ -66,9 +66,9 @@ public class PlacementHelper : BloonsTD6Mod
             UnHilightTowers(highlightedTowers);
             ResetSavedValues();
         }
-
+        
         if (PopupScreen.instance.IsPopupActive()) return;
-
+        
         if (Settings.PlaceTowerHotkey.JustPressed())
         {
             if (savedPosition != null && savedPosition.HasValue)
@@ -81,7 +81,7 @@ public class PlacementHelper : BloonsTD6Mod
                 inputManager.TryPlace();
             }
         }
-
+        
         var direction = GetDirectionInput();
         if (direction != Vector2.zero)
         {
@@ -95,27 +95,27 @@ public class PlacementHelper : BloonsTD6Mod
             }
             return;
         }
-
+        
         if (Settings.SnapToClosestHotkey.JustPressed())
         {
             HandleSnapToClosest();
             return;
         }
-
+        
         if (inputManager.inInstaMode || inputManager.inPowerMode) return;
-
+        
         if (Settings.SqueezeHotkey.JustPressed())
         {
             HandleSqueezeInput();
             return;
         }
-
+        
         if (Settings.RotateClockwiseHotkey.JustPressed())
         {
             HandleRotateInput(clockwise: true);
             return;
         }
-
+        
         if (Settings.RotateAnticlockwiseHotkey.JustPressed())
         {
             HandleRotateInput(clockwise: false);
@@ -125,7 +125,7 @@ public class PlacementHelper : BloonsTD6Mod
 
     private void HandleSacrifices()
     {
-        var inputManager = InGame.instance.inputManager;
+        var inputManager = InGame.instance.InputManagers.First();
 
         var position = inputManager.EntityPositionWorld;
         foreach (var sacrificer in sacrificers)
@@ -229,7 +229,7 @@ public class PlacementHelper : BloonsTD6Mod
         ResetSavedValues();
         UnHilightTowers(highlightedTowers);
 
-        var inputManager = InGame.instance.InputManager;
+        var inputManager = InGame.instance.InputManagers.First();
         var placementModel = inputManager.placementModel;
         Vector2 position = inputManager.EntityPositionWorld;
 
@@ -260,9 +260,9 @@ public class PlacementHelper : BloonsTD6Mod
                 highlightedTowers.Add(tower);
             }
 
-            MelonLogger.Msg("Placement found");
+            // MelonLogger.Msg("Placement found");
         }
-        else MelonLogger.Msg("Couldn't find a placement");
+        // else MelonLogger.Msg("Couldn't find a placement");
     }
 
     private void HandleRotateInput(bool clockwise)
@@ -270,7 +270,7 @@ public class PlacementHelper : BloonsTD6Mod
         ResetSavedValues();
         UnHilightTowers(highlightedTowers);
 
-        var inputManager = InGame.instance.InputManager;
+        var inputManager = InGame.instance.InputManagers.First();
         var placementModel = inputManager.placementModel;
         Vector2 position = inputManager.EntityPositionWorld;
 
@@ -397,7 +397,7 @@ public class PlacementHelper : BloonsTD6Mod
         if (InGame.instance == null)
             return false;
 
-        var inputManager = InGame.instance.InputManager;
+        var inputManager = InGame.instance.InputManagers.First();
         if (inputManager == null)
             return false;
 
@@ -429,11 +429,11 @@ public class PlacementHelper : BloonsTD6Mod
 
     private static void RefreshShop()
     {
-        ShopMenu.instance.RebuildTowerSet();
-        foreach (var button in ShopMenu.instance.ActiveTowerButtons)
-        {
-            button.Cast<TowerPurchaseButton>().Update();
-        }
+        // ShopMenu.instance.RebuildTowerSet();
+        // foreach (var button in ShopMenu.instance.ActiveTowerButtons)
+        // {
+        //     button.Cast<TowerPurchaseButton>().Update();
+        // }
     }
 
     private static bool isSacrificer(Tower tower)
@@ -456,6 +456,15 @@ public class PlacementHelper : BloonsTD6Mod
                 sacrificers.Add(tower);
             }
         }
+
+        isInGame = true;
+    }
+
+    public override void OnMatchEnd()
+    {
+        isInGame = false;
+        
+        base.OnMatchEnd();
     }
 
     public override void OnTowerDestroyed(Tower tower)
