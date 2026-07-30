@@ -2,8 +2,8 @@ namespace PlacementHelper;
 
 public static class ModHelperData
 {
-    public const string WorksOnVersion = "52.1";
-    public const string Version = "0.0.9";
+    public const string WorksOnVersion = "55.1";
+    public const string Version = "0.1.0";
     public const string Name = "PlacementHelper";
 
     public const string Description =
@@ -24,6 +24,12 @@ Features:
     * If the tower is initially placeable, it will rotate up until it no longer is.
     * If not initially placeable, it will rotate until it becomes placeable.
     * Press the Place Tower Hotkey to confirm the placement.
+
+- Axis align towers
+  * Hold a tower near any other tower in the direction that you want to axis align place the tower.
+  * Press the Axis Align Hotkey.
+  * If a valid placement is found, the close tower will be highlighted.
+  * Press the Place Tower Hotkey to finalize the placement.
 
 - Highlights Super Monkeys that can sacrifice the held tower.
 - Highlights towers that can be sacrificed by the held Super Monkey.

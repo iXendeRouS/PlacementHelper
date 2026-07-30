@@ -10,8 +10,8 @@
 
 **Features:**
 
-* **Place Tower Hotkey**: Use it for normal placement, or placing subpixel for squeezing or rotation.
-* **Snap to Closest Valid Position**: Move the cursor to the nearest valid placement.
+* **Place Tower Hotkey**: Use it for normal placement, or placing subpixel for squeezing or rotation or axis alignment. Conflicts with Useful Utilities confirm placement hotkey.
+* **Snap to Closest Valid Position**: Move the cursor to the nearest valid pixel placement.
 * **Directional Snapping**: Snap the mouse in a specific direction.
 * **Mouse Keys**: Move the mouse position pixel-by-pixel in any direction.
 * **Tower Squeezing**: Fit a tower between two nearby circular towers.
@@ -27,6 +27,14 @@
     * If it starts in a valid position, it rotates up until it becomes invalid.
     * If it starts in an invalid position, it rotates until it becomes valid.
   * Press the Place Tower Hotkey to finalize the placement.
+
+* **Axis Alignment**:
+
+  * Hold a tower near any other tower in the direction that you want to axis align place the tower.
+  * Press the Axis Align Hotkey.
+  * If a valid placement is found, the close tower will be highlighted.
+  * Press the Place Tower Hotkey to finalize the placement.
+
 * **Sacrifice Highlighting**:
 
   * Highlights **Super Monkeys** that can sacrifice the held tower.

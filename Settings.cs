@@ -53,18 +53,24 @@ namespace PlacementHelper
             description = "Squeeze a tower between the closest two towers if both are circular. Subpixel."
         };
 
+        public static readonly ModSettingHotkey AxisAlignHotkey = new(KeyCode.V)
+        {
+            description = "Axis Align the tower to the closest tower. Subpixel perfect."
+        };
+
         public static readonly ModSettingHotkey RotateClockwiseHotkey = new(KeyCode.E)
         {
             category = Rotation,
-            description = "Rotate the tower clockwise around the closest circular tower."
+            description = "Rotate the tower clockwise around the closest circular tower. Subpixel."
         };
 
         public static readonly ModSettingHotkey RotateAnticlockwiseHotkey = new(KeyCode.Q)
         {
             category = Rotation,
-            description = "Rotate the tower anti-clockwise around the closest circular tower."
+            description = "Rotate the tower anti-clockwise around the closest circular tower.. Subpixel."
         };
 
+        
         public static readonly ModSettingHotkey PlaceTowerHotkey = new(KeyCode.Return)
         {
             description = "Places the held tower. Will place the tower at its squeezed or rotated position subpixel if one is ready."

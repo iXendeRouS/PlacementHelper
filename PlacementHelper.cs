@@ -17,6 +17,8 @@ using Il2CppAssets.Scripts.Models;
 using Il2CppAssets.Scripts.Models.Towers;
 using Il2CppAssets.Scripts.Unity.UI_New.Popups;
 using Il2CppGeom;
+using Vector3Boxed = Il2CppAssets.Scripts.Simulation.SMath.Vector3Boxed;
+using UnityEngine.InputSystem.Utilities;
 
 [assembly: MelonInfo(typeof(PlacementHelper.PlacementHelper), ModHelperData.Name, ModHelperData.Version, ModHelperData.RepoOwner)]
 [assembly: MelonGame("Ninja Kiwi", "BloonsTD6")]
@@ -109,7 +111,13 @@ public class PlacementHelper : BloonsTD6Mod
             HandleSqueezeInput();
             return;
         }
-        
+
+        if (Settings.AxisAlignHotkey.JustPressed())
+        {
+            HandleAxisAlignInput();
+            return;
+        }
+
         if (Settings.RotateClockwiseHotkey.JustPressed())
         {
             HandleRotateInput(clockwise: true);
@@ -234,17 +242,17 @@ public class PlacementHelper : BloonsTD6Mod
         Vector2 position = inputManager.EntityPositionWorld;
 
         var closestTowers = InGame.instance.GetTowerManager().GetClosestTowers(
-            new Il2CppAssets.Scripts.Simulation.SMath.Vector3Boxed(position.x, position.y, 0f), 2).ToArray();
+            new Vector3Boxed(position.x, position.y, 0f), 2).ToArray();
 
         if (closestTowers.Length != 2)
         {
-            MelonLogger.Msg("Could not find 2 towers to squeeze inbetween");
+            ModHelper.Msg<PlacementHelper>("Could not find 2 towers to squeeze inbetween");
             return;
         }
 
         if (closestTowers.Any(t => !t.towerModel.footprint.Is<CircleFootprintModel>()))
         {
-            MelonLogger.Msg($"Two closest towers found {closestTowers[0].towerModel.baseId}, {closestTowers[1].towerModel.baseId} were not both circular");
+            ModHelper.Msg<PlacementHelper>($"Two closest towers found {closestTowers[0].towerModel.baseId}, {closestTowers[1].towerModel.baseId} were not both circular");
             return;
         }
 
@@ -260,9 +268,59 @@ public class PlacementHelper : BloonsTD6Mod
                 highlightedTowers.Add(tower);
             }
 
-            // MelonLogger.Msg("Placement found");
+            // ModHelper.Msg<PlacementHelper>("Placement found");
         }
-        // else MelonLogger.Msg("Couldn't find a placement");
+        // else ModHelper.Msg<PlacementHelper>("Couldn't find a placement");
+    }
+
+    private void HandleAxisAlignInput()
+    {
+        ResetSavedValues();
+        UnHilightTowers(highlightedTowers);
+
+        var inputManager = InGame.instance.InputManagers.First();
+        var placementModel = inputManager.placementModel;
+        Vector2 position = inputManager.EntityPositionWorld;
+
+        var closestTowers = InGame.instance.GetTowerManager().GetClosestTowers(
+            new Vector3Boxed(position.x, position.y, 0f), 1).ToArray();
+
+        if (closestTowers.Length != 1)
+        {
+            ModHelper.Msg<PlacementHelper>("Couldn't find closest tower to axis align to!");
+            return;
+        }
+
+        var closestTower = closestTowers[0];
+
+        if (closestTower == null)
+        {
+            ModHelper.Msg<PlacementHelper>("Closest tower to axis align to was null!");
+            return;
+        }
+
+        var closestPos = closestTower.Position;
+
+        Vector2 dominantDirection = GetDominantDirection(closestPos.X, closestPos.Y, position.x, position.y);
+        bool isVertical = dominantDirection == Vector2.up || dominantDirection == Vector2.down;
+
+        if (!TryGetFootprintExtent(closestTower.towerModel.footprint, isVertical, "Axis align closest tower", out float closestExtent))
+            return;
+
+        if (!TryGetFootprintExtent(placementModel.footprint, isVertical, "Axis align placement tower", out float placementExtent))
+            return;
+
+        float distance = closestExtent + placementExtent;
+        Vector2 newPosition = new Vector2(closestPos.X, closestPos.Y) + dominantDirection * distance;
+
+        if (CanPlaceAtWorld(newPosition))
+        {
+            savedPosition = newPosition;
+            savedTowerId = placementModel.baseId;
+
+            closestTower.Hilight();
+            highlightedTowers.Add(closestTower);
+        }
     }
 
     private void HandleRotateInput(bool clockwise)
@@ -276,16 +334,16 @@ public class PlacementHelper : BloonsTD6Mod
 
         if (!placementModel.footprint.Is<CircleFootprintModel>())
         {
-            MelonLogger.Msg("Placement tower is not circular");
+            ModHelper.Msg<PlacementHelper>("Placement tower is not circular");
             return;
         }
 
         var closestTowers = InGame.instance.GetTowerManager().GetClosestTowers(
-            new Il2CppAssets.Scripts.Simulation.SMath.Vector3Boxed(position.x, position.y, 0f), 1).ToArray();
+            new Vector3Boxed(position.x, position.y, 0f), 1).ToArray();
 
         if (closestTowers == null || closestTowers.Length == 0)
         {
-            MelonLogger.Msg("No towers found nearby");
+            ModHelper.Msg<PlacementHelper>("No towers found nearby");
             return;
         }
 
@@ -293,7 +351,7 @@ public class PlacementHelper : BloonsTD6Mod
 
         if (!closestTower.towerModel.footprint.Is<CircleFootprintModel>())
         {
-            MelonLogger.Msg($"Closest tower ({closestTower.towerModel.baseId}) is not circular");
+            ModHelper.Msg<PlacementHelper>($"Closest tower ({closestTower.towerModel.baseId}) is not circular");
             return;
         }
 
@@ -499,6 +557,50 @@ public class PlacementHelper : BloonsTD6Mod
     {
         base.OnTowerSelected(tower);
 
-        // MelonLogger.Msg($"({tower.Position.X}, {tower.Position.Y}, {tower.Position.Z})");
+        // ModHelper.Msg<PlacementHelper>($"({tower.Position.X}, {tower.Position.Y}, {tower.Position.Z})");
+    }
+
+    /// Returns the cardinal direction (up/down/left/right) from point 0 to point 1.
+    public static Vector2 GetDominantDirection(float x0, float y0, float x1, float y1)
+    {
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+
+        // Pick whichever axis has the larger displacement
+        if (Mathf.Abs(dx) >= Mathf.Abs(dy))
+        {
+            return dx >= 0 ? Vector2.right : Vector2.left;
+        }
+        else
+        {
+            return dy >= 0 ? Vector2.up : Vector2.down;
+        }
+    }
+
+    /// <summary>
+    /// Gets the relevant extent (half-width along the axis, or radius) of a tower's footprint,
+    /// for use in axis-aligned distance calculations.
+    /// </summary>
+    private bool TryGetFootprintExtent(FootprintModel footprint, bool isVertical, string context, out float extent)
+    {
+        if (footprint.Is<RectangleFootprintModel>())
+        {
+            var rect = footprint.As<RectangleFootprintModel>();
+            extent = (isVertical ? rect.yWidth : rect.xWidth) / 2f;
+            // ModHelper.Msg<PlacementHelper>($"{extent} extent found");
+            return true;
+        }
+
+        if (footprint.Is<CircleFootprintModel>())
+        {
+            var circle = footprint.As<CircleFootprintModel>();
+            extent = circle.radius;
+            // ModHelper.Msg<PlacementHelper>($"{extent} extent found");
+            return true;
+        }
+
+        extent = 0f;
+        ModHelper.Msg<PlacementHelper>($"{context} had unknown footprint model!");
+        return false;
     }
 }
